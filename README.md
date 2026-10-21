@@ -6,6 +6,12 @@ Repository: **TeamProject** — application and preparation for the midterm pres
 
 A shared planner with individual sign-in, task assignments, deadlines, progress, and an activity feed.
 
+## Live application
+
+https://nextstep-team-production.up.railway.app/
+
+For first-time access, choose **Create account**, select your own member name, choose your password, and enter the private team invite code. Sudip can retrieve that code from Railway → NextStep Team Planner → nextstep-team → Variables → TEAM_INVITE_CODE. Share it privately within the team. No member passwords have been created in advance.
+
 ## Run on your computer
 
 1. Install **Node.js 24 LTS**. Check with `node --version`.
@@ -93,3 +99,4 @@ Only allowlisted UI files are public. Database, environment, test, and server-so
 3. Complete the task and show the team activity feed.
 4. Demonstrate filters, editing, delete/undo, and mobile layout.
 5. Explain the architecture and the next improvements each member will build.
+
