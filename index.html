@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f2">
+  <meta name="description" content="A small, thoughtful study planner for tasks, subjects, and deadlines.">
+  <title>NextStep — Team Study Planner</title>
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to tasks</a>
+  <section id="auth-screen" class="auth-screen" aria-labelledby="auth-title">
+  <div class="auth-story"><a class="brand" href="./"><span class="brand-mark">n.</span><span>nextstep<span class="brand-caption">TEAM STUDY WORKSPACE</span></span></a><p class="eyebrow">ERIC · ABINASH · SONDOR · SUDIP</p><h1 id="auth-title">Four minds.<br>One next step.</h1><p>Assignments, deadlines, and small wins — in a workspace your whole team can share.</p><div class="auth-members" aria-label="Team members"><span>E</span><span>A</span><span>S</span><span>S</span></div><a href="team.html">Meet the team & explore the project ↗</a></div>
+  <div class="auth-card"><p class="eyebrow">YOUR TEAM. YOUR WORKSPACE.</p><h2>Let’s make progress.</h2><div class="auth-tabs"><button id="mode-login" type="button" aria-pressed="true">Sign in</button><button id="mode-register" type="button" aria-pressed="false">Create account</button></div><form id="auth-form"><label for="auth-member">Team member</label><select id="auth-member" required><option value="sudip">Sudip</option><option value="eric">Eric</option><option value="abinash">Abinash</option><option value="sondor">Sondor</option></select><label for="auth-password">Password</label><input id="auth-password" type="password" minlength="10" maxlength="128" autocomplete="current-password" required placeholder="At least 10 characters"><div id="invite-field" hidden><label for="auth-invite">Team invite code</label><input id="auth-invite" autocomplete="off" placeholder="Ask your team leader"></div><p id="auth-message" class="form-feedback" role="alert"></p><button id="auth-submit" class="primary-button">Sign in to the team ↗</button></form><p class="auth-note">First visit? Create your own account with the private invite code. Each member has one account.</p></div>
+</section><div class="app-shell" id="app-shell" hidden>
+    <aside class="sidebar" aria-label="Planner navigation">
+      <a class="brand" href="./" aria-label="NextStep home"><span class="brand-mark" aria-hidden="true">n.</span><span>nextstep<span class="brand-caption">STUDENT WORKSPACE</span></span></a>
+      <p class="nav-label">TEAM PLANNER</p>
+      <nav class="view-nav" aria-label="Task views">
+        <button class="nav-item active" type="button" data-view="all" aria-pressed="true"><span class="nav-symbol" aria-hidden="true">▦</span><span>All tasks</span><span class="nav-count" id="count-all">0</span></button>
+        <button class="nav-item" type="button" data-view="mine" aria-pressed="false"><span class="nav-symbol" aria-hidden="true">◎</span><span>My tasks</span><span class="nav-count" id="count-mine">0</span></button><button class="nav-item" type="button" data-view="today" aria-pressed="false"><span class="nav-symbol" aria-hidden="true">◉</span><span>Due today</span><span class="nav-count" id="count-today">0</span></button>
+        <button class="nav-item" type="button" data-view="upcoming" aria-pressed="false"><span class="nav-symbol" aria-hidden="true">↗</span><span>Upcoming</span><span class="nav-count" id="count-upcoming">0</span></button>
+        <button class="nav-item" type="button" data-view="completed" aria-pressed="false"><span class="nav-symbol" aria-hidden="true">✓</span><span>Completed</span><span class="nav-count" id="count-completed">0</span></button>
+      </nav>
+      <div class="sidebar-note"><span class="tiny-star" aria-hidden="true">✳</span><p>Big plans.<br>Small, steady steps.</p><span>One task is a good start.</span></div>
+      <div class="device-note"><span class="saved-dot" aria-hidden="true"></span><a href="team.html">Eric · Abinash · Sondor · Sudip ↗</a></div>
+    </aside>
+
+    <main id="main" class="main-content">
+      <header class="topbar"><span class="breadcrumb">Team workspace <span aria-hidden="true">/</span> <strong id="current-member"></strong></span><div class="session-actions"><time id="today-label"></time><button id="logout" type="button">Sign out</button></div></header>
+      <section class="page-intro" aria-labelledby="page-title"><div><p class="eyebrow">A LITTLE STRUCTURE. A LOT MORE HEADSPACE.</p><h1 id="page-title">Our next step<br>starts here<span class="accent-dot">.</span></h1><p class="intro-copy">A shared place for assignments, deadlines, and the small wins that move our team forward.</p></div><div class="intro-art" aria-hidden="true"><div class="art-orbit"></div><span class="art-label">ONE THING<br>AT A TIME</span><div class="art-check">✓</div><span class="art-spark">✳</span></div></section>
+
+      <div id="storage-warning" class="notice warning" role="alert" hidden></div>
+      <section class="overview" aria-label="Task overview"><div class="overview-item"><span class="eyebrow">STILL TO DO</span><strong id="open-total">0</strong><span>small steps ahead</span></div><div class="overview-item"><span class="eyebrow">DUE TODAY</span><strong id="today-total">0</strong><span>on today’s radar</span></div><div class="overview-item"><span class="eyebrow">COMPLETED</span><strong id="completed-total">0</strong><span>give yourself some credit</span></div></section>
+
+      <section id="team-members" class="team-strip" aria-label="Team workload"></section><div class="sync-row"><span id="sync-state" role="status">Connecting to your shared board…</span><button id="refresh-board" type="button">Refresh ↻</button></div><div class="workspace-grid">
+        <section class="tasks-panel" aria-labelledby="tasks-heading">
+          <div class="section-heading"><div><p class="eyebrow">A PLAN YOU CAN ACT ON</p><h2 id="tasks-heading">All tasks</h2></div><span id="visible-count" class="count-label">0 tasks</span></div>
+          <div class="filter-row"><label class="search-control"><span aria-hidden="true">⌕</span><span class="sr-only">Search tasks</span><input id="task-search" type="search" placeholder="Find a task or subject…" autocomplete="off"></label><label class="subject-control"><span class="sr-only">Filter by subject</span><select id="subject-filter"><option value="">All subjects</option></select></label></div>
+          <div class="list-caption"><span>TASK / SUBJECT</span><span>DEADLINE</span></div>
+          <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
+          <div id="empty-state" class="empty-state"><span class="empty-mark" aria-hidden="true">✳</span><h3 id="empty-title">A fresh page for your plans.</h3><p id="empty-description">Add your first task. A little clarity goes a long way.</p><button type="button" id="empty-action" class="text-button">Add my first task ↗</button></div>
+          <div class="list-footer"><p id="list-summary">Your task list is ready when you are.</p><span class="text-button">Shared with all four members</span></div>
+        </section>
+
+        <aside class="task-composer" aria-labelledby="composer-title">
+          <div class="composer-heading"><span class="eyebrow" id="composer-label">MAKE A LITTLE PROGRESS</span><h2 id="composer-title">What’s next?</h2><p>Get it out of your head and onto the list.</p></div>
+          <form id="task-form">
+            <label for="task-title">Task name <span class="required-note">Required</span></label><input id="task-title" name="title" placeholder="e.g. Finish the HTML exercise" maxlength="120" required autocomplete="off">
+            <label for="task-subject">Subject <span class="field-hint">Optional</span></label><input id="task-subject" name="subject" placeholder="Choose or type a subject" list="subject-options" maxlength="60" autocomplete="off"><datalist id="subject-options"><option value="Web Programming"></option><option value="Database"></option><option value="Algorithms"></option><option value="Korean"></option></datalist>
+            <label for="task-assignee">Assign to <span class="field-hint">Optional</span></label><select id="task-assignee"><option value="">Unassigned</option><option value="eric">Eric</option><option value="abinash">Abinash</option><option value="sondor">Sondor</option><option value="sudip">Sudip</option></select><label for="task-deadline">Deadline <span class="field-hint">Optional</span></label><input id="task-deadline" name="deadline" type="date" max="9999-12-31">
+            <p class="form-feedback" id="form-feedback" role="status"></p>
+            <button type="submit" class="primary-button" id="submit-task">Add to my list <span aria-hidden="true">＋</span></button><button type="button" id="cancel-edit" class="cancel-button" hidden>Cancel editing</button>
+          </form>
+          <div class="composer-tip"><span aria-hidden="true">↳</span><p>Keep it small and specific.<br>“Read chapter 2” beats “Study more.”</p></div>
+        </aside>
+      </div>
+      <div id="action-notice" class="notice action-notice" hidden><p id="action-message" role="status"></p><button id="undo-delete" type="button">Undo</button><button id="dismiss-notice" class="dismiss" type="button" aria-label="Dismiss notification">×</button></div>
+      <section class="activity-section" aria-labelledby="activity-title"><div class="section-heading"><div><p class="eyebrow">SMALL STEPS, TOGETHER</p><h2 id="activity-title">Team activity</h2></div></div><ul id="activity-list"></ul><p id="activity-empty">Your team’s task changes will appear here.</p></section><footer class="footer"><span>NEXTSTEP / MADE FOR SMALL WINS</span><a href="team.html">Eric · Abinash · Sondor · Sudip ↗</a></footer>
+    </main>
+  </div>
+</body>
+</html>
