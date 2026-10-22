@@ -1,8 +1,15 @@
 {
   "name": "nextstep-team-planner",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24 <25" },
-  "scripts": { "start": "node server.mjs", "test": "node --test tests/server.test.mjs" }
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "backup": "node scripts/backup.mjs",
+    "restore": "node scripts/restore.mjs"
+  }
 }

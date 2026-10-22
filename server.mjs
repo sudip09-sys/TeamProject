@@ -1,3 +1,4 @@
+import { migrate, createWorkflow } from './workflow.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,26 +20,7 @@ const SESSION_AGE = 7 * 24 * 60 * 60 * 1000;
 const hash = value => createHash('sha256').update(value).digest('hex');
 const keyOptions = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
-function validDate(value) {
-  if (value === '') return true;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  if (year < 1000 || year > 9999) return false;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.toISOString().slice(0, 10) === value;
-}
-
 function fault(status, message) { return Object.assign(new Error(message), { status }); }
-function validateTask(body) {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) throw fault(400, 'Invalid task.');
-  const { title, subject = '', deadline = '', assignee = '', completed = false } = body;
-  if (typeof title !== 'string' || !title.trim() || title.trim().length > 120 ||
-      typeof subject !== 'string' || subject.trim().length > 60 ||
-      typeof deadline !== 'string' || !validDate(deadline) ||
-      typeof assignee !== 'string' || (assignee !== '' && !names.has(assignee)) ||
-      typeof completed !== 'boolean') throw fault(400, 'Check the task title, subject, deadline, and assigned member.');
-  return { title: title.trim(), subject: subject.trim(), deadline, assignee, completed };
-}
 
 async function readBody(request) {
   if (!/^application\/json(?:;|$)/i.test(request.headers['content-type'] || '')) throw fault(415, 'Use a JSON request.');
@@ -68,6 +50,7 @@ export function createApp(options = {}) {
     CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY, title TEXT NOT NULL, subject TEXT NOT NULL, deadline TEXT NOT NULL, assignee TEXT NOT NULL, completed INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, created_by TEXT NOT NULL REFERENCES users(username), updated_by TEXT NOT NULL REFERENCES users(username), version INTEGER NOT NULL, deleted_at INTEGER);
     CREATE TABLE IF NOT EXISTS activity(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL REFERENCES users(username), action TEXT NOT NULL, title TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS session_expiry ON sessions(expires_at);`);
+  migrate(db, databasePath);
   const attempts = new Map();
   let closed = false;
 
@@ -101,14 +84,12 @@ export function createApp(options = {}) {
     if (attempts.size > 5000) attempts.delete(attempts.keys().next().value);
     attempts.set(key, item);
   }
-  function publicTask(row) {
-    return { id: row.id, title: row.title, subject: row.subject, deadline: row.deadline, assignee: row.assignee, completed: Boolean(row.completed), createdAt: row.created_at, updatedAt: row.updated_at, createdBy: row.created_by, updatedBy: row.updated_by, version: row.version };
-  }
-  function snapshot() {
+  function snapshot(user) {
     return {
-      tasks: db.prepare('SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY created_at DESC').all().map(publicTask),
-      activity: db.prepare('SELECT id,username,action,title,created_at AS createdAt FROM activity ORDER BY id DESC LIMIT 12').all(),
-      members: MEMBERS.map(member => ({ ...member, registered: Boolean(db.prepare('SELECT username FROM users WHERE username=?').get(member.username)) }))
+      tasks: db.prepare('SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY created_at DESC').all().map(workflow.task),
+      activity: db.prepare('SELECT id,username,action,title,created_at AS createdAt FROM activity ORDER BY id DESC LIMIT 200').all(),
+      members: MEMBERS.map(member => ({ ...member, registered: Boolean(db.prepare('SELECT username FROM users WHERE username=?').get(member.username)) })),
+      ...workflow.extra(user)
     };
   }
   function activity(username, action, title) {
@@ -116,11 +97,13 @@ export function createApp(options = {}) {
     db.exec('DELETE FROM activity WHERE id NOT IN (SELECT id FROM activity ORDER BY id DESC LIMIT 200)');
   }
 
+  const workflow = createWorkflow({ db, members: MEMBERS, json, readBody, activity, snapshot, sessionUser, deriveKey, keyOptions, newSession, inviteCode, rateLimit });
+
   const server = http.createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
     response.setHeader('Referrer-Policy', 'same-origin');
-    response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; media-src 'self' blob:");
     try {
       const url = new URL(request.url, 'http://localhost');
       const method = request.method;
@@ -139,11 +122,11 @@ export function createApp(options = {}) {
           rateLimit(request, username);
           if (!names.has(username) || body.password.length < 10 || body.password.length > 128) throw fault(400, 'Choose a team member and a password of 10–128 characters.');
           if (url.pathname.endsWith('/register')) {
-            if (typeof body.inviteCode !== 'string' || hash(body.inviteCode) !== hash(inviteCode)) throw fault(403, 'The team invite code is incorrect.');
+            if (!workflow.validInvite(body.inviteCode)) throw fault(403, 'The team invite code is incorrect.');
             if (db.prepare('SELECT username FROM users WHERE username=?').get(username)) throw fault(409, 'This member already has an account. Sign in instead.');
             const salt = randomBytes(16).toString('hex');
             const key = await deriveKey(body.password, salt, 64, keyOptions);
-            try { db.prepare('INSERT INTO users VALUES(?,?,?,?)').run(username, salt, key.toString('hex'), Date.now()); }
+            try { db.prepare('INSERT INTO users(username,salt,password_hash,created_at) VALUES(?,?,?,?)').run(username, salt, key.toString('hex'), Date.now()); }
             catch (error) { if (error.code?.includes('CONSTRAINT')) throw fault(409, 'This member already has an account.'); throw error; }
           } else {
             const stored = db.prepare('SELECT * FROM users WHERE username=?').get(username);
@@ -154,50 +137,19 @@ export function createApp(options = {}) {
           return json(response, 200, { user: { username, name: names.get(username) } });
         }
         const user = sessionUser(request);
+        if (await workflow.handle(request, response, url, user)) return;
         if (!user) throw fault(401, 'Sign in to your team workspace.');
         if (url.pathname === '/api/auth/logout' && method === 'POST') {
           db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hash(tokenFrom(request)));
           response.setHeader('Set-Cookie', `nextstep_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${production ? '; Secure' : ''}`);
           return json(response, 200, { ok: true });
         }
-        if (url.pathname === '/api/workspace' && method === 'GET') return json(response, 200, snapshot());
-        if (url.pathname === '/api/tasks' && method === 'POST') {
-          const task = validateTask(await readBody(request));
-          if (db.prepare('SELECT count(*) AS count FROM tasks WHERE deleted_at IS NULL').get().count >= 1000) throw fault(409, 'The workspace is limited to 1,000 active tasks.');
-          const now = Date.now();
-          db.prepare('INSERT INTO tasks VALUES(?,?,?,?,?,?,?,?,?,?,?,NULL)').run(randomUUID(), task.title, task.subject, task.deadline, task.assignee, Number(task.completed), now, now, user.username, user.username, 1);
-          activity(user.username, 'created', task.title);
-          return json(response, 201, snapshot());
-        }
-        const match = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})(\/restore)?$/);
-        if (match && ['PUT', 'DELETE', 'POST'].includes(method)) {
-          const body = await readBody(request);
-          if (!Number.isSafeInteger(body?.version)) throw fault(400, 'Task version is required.');
-          const row = db.prepare('SELECT * FROM tasks WHERE id=?').get(match[1]);
-          if (!row) throw fault(404, 'Task not found.');
-          if (row.version !== body.version) throw fault(409, 'Someone else changed this task. Refresh the board and try again.');
-          if (match[2] && method === 'POST') {
-            if (!row.deleted_at) throw fault(409, 'This task has already been restored.');
-            db.prepare('UPDATE tasks SET deleted_at=NULL,updated_by=?,updated_at=?,version=version+1 WHERE id=?').run(user.username, Date.now(), row.id);
-            activity(user.username, 'restored', row.title);
-          } else if (!match[2] && method === 'DELETE') {
-            if (row.deleted_at) throw fault(404, 'Task was already deleted.');
-            db.prepare('UPDATE tasks SET deleted_at=?,updated_at=?,updated_by=?,version=version+1 WHERE id=?').run(Date.now(), Date.now(), user.username, row.id);
-            activity(user.username, 'deleted', row.title);
-            return json(response, 200, { ...snapshot(), deletedTask: publicTask(db.prepare('SELECT * FROM tasks WHERE id=?').get(row.id)) });
-          } else if (!match[2] && method === 'PUT') {
-            if (row.deleted_at) throw fault(404, 'Task was deleted.');
-            const task = validateTask(body);
-            db.prepare('UPDATE tasks SET title=?,subject=?,deadline=?,assignee=?,completed=?,updated_at=?,updated_by=?,version=version+1 WHERE id=?').run(task.title, task.subject, task.deadline, task.assignee, Number(task.completed), Date.now(), user.username, row.id);
-            activity(user.username, task.completed !== Boolean(row.completed) ? (task.completed ? 'completed' : 'reopened') : 'updated', task.title);
-          } else throw fault(405, 'Method not allowed.');
-          return json(response, 200, snapshot());
-        }
+        if (url.pathname === '/api/workspace' && method === 'GET') return json(response, 200, snapshot(user));
         throw fault(404, 'API route not found.');
       }
       if (!['GET', 'HEAD'].includes(method)) throw fault(405, 'Method not allowed.');
       // Explicit allowlist: database files, source, tests, and environment files are never public.
-      const publicFiles = new Set(['/', '/index.html', '/app.js', '/styles.css', '/team.html', '/assets/mark.svg']);
+      const publicFiles = new Set(['/', '/index.html', '/app.js', '/break.js', '/styles.css', '/team.html', '/assets/mark.svg']);
       if (!publicFiles.has(url.pathname)) throw fault(404, 'Page not found.');
       const relative = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
       const filename = path.join(root, relative);
@@ -211,7 +163,7 @@ export function createApp(options = {}) {
     }
   });
   server.requestTimeout = 20_000;
-  return { server, close: () => { if (!closed) { db.close(); closed = true; } } };
+  return { server, close: () => { if (!closed) { workflow.close(); db.close(); closed = true; } }, stopStreams: workflow.close };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -222,5 +174,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(`NextStep team workspace: http://${host}:${app.server.address().port}`);
     if (process.env.NODE_ENV !== 'production' && !process.env.TEAM_INVITE_CODE) console.log('Local development invite code: nextstep-local-team');
   });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => app.server.close(() => { app.close(); process.exit(0); }));
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { app.stopStreams(); app.server.close(() => { app.close(); process.exit(0); }); });
 }

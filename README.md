@@ -1,102 +1,121 @@
-# NextStep — Team Study Planner
+# NextStep — Team workspace
 
-**Team: Eric, Abinash, Sondor, and Sudip (team lead).**
+Eric · Abinash · Sondor · Sudip
 
-Repository: **TeamProject** — application and preparation for the midterm presentation.
+Live app: https://nextstep-team-production.up.railway.app/
 
-A shared planner with individual sign-in, task assignments, deadlines, progress, and an activity feed.
+NextStep brings a student team's tasks, milestones, discussions, study sessions, and focus time together. Each member has a separate account and shares one online workspace.
 
-## Live application
+## Start locally
 
-https://nextstep-team-production.up.railway.app/
-
-For first-time access, choose **Create account**, select your own member name, choose your password, and enter the private team invite code. Sudip can retrieve that code from Railway → NextStep Team Planner → nextstep-team → Variables → TEAM_INVITE_CODE. Share it privately within the team. No member passwords have been created in advance.
-
-## Run on your computer
-
-1. Install **Node.js 24 LTS**. Check with `node --version`.
-2. Extract the ZIP, open this folder in VS Code, and open its terminal.
-3. Run `npm start`. No external packages need installing.
-4. Visit **http://127.0.0.1:4175**.
-5. Choose **Create account**, select your own name, choose a password of at least 10 characters, and enter the local development invite code: **nextstep-local-team**.
-6. Sign out and sign back in. Each member should create their own account and choose their own password.
-
-Keep the terminal running. Stop with **Ctrl+C**. Use another browser or private window to test a second account independently. All members must connect to the same server; separate copies have separate databases.
-
-Do not use Live Server for this version: sign-in and shared tasks require the Node backend. The previous device-only prototype remains separate.
-
-## Private invite code
-
-Copy `.env.example` to `.env`, set your own `TEAM_INVITE_CODE`, and start with:
+Use Node.js 24, extract the source ZIP, open this folder in VS Code, and run:
 
 ```sh
-node --env-file=.env server.mjs
+npm start
 ```
 
-Do not commit `.env` or share passwords. The code is used only for first-time registration. Each of the four names can be registered once; existing members sign in with their passwords.
+Open http://127.0.0.1:4175. Create your account with your own member name and a password of 10–128 characters. The local development invitation is `nextstep-local-team`. It does not work on the hosted app. No package installation is needed.
 
-## Features
+For a custom local invitation, set TEAM_INVITE_CODE in your environment, or create .env from .env.example and run `node --env-file=.env server.mjs`. Use the Node server, not Live Server.
 
-- Accounts for Eric, Abinash, Sondor, and Sudip.
-- Passwords hashed using scrypt with individual salts.
-- HttpOnly session cookies and server-side sessions that expire after seven days.
-- Shared SQLite database created at `data/nextstep.sqlite`.
-- Add, edit, assign, complete, reopen, delete, and restore tasks.
-- All tasks, My tasks, Due today, Upcoming, and Completed views.
-- Search and subject filters, optional deadlines, and overdue indicators.
-- Team workload cards and recent activity.
-- Automatic refresh every 12 seconds while active, plus manual Refresh.
-- Task-version checks reject stale edits instead of overwriting another member's work.
-- Responsive layout.
+## A complete team workflow
 
-All four members have equal workspace permissions and can edit any task. My tasks shows unfinished tasks assigned to the signed-in member. Registration status is not online presence. App activity is not evidence of code contributions. Password recovery and account management are not included in this first version.
+1. Create a milestone such as Midterm Presentation, with a target date.
+2. Add tasks, choose priorities, assignees, reviewers, and deadlines, and attach work links.
+3. Choose prerequisite tasks. A blocked task stays in To do until those prerequisites are Done. Cycles are rejected.
+4. The assignee, task creator, or Sudip moves the task to In progress. Status menus work on phones and keyboards; desktop cards also support drag and drop.
+5. Add comments and links to show the work. With an assignee and a separate reviewer selected, submit it for Review.
+6. Only the selected reviewer can approve it as Done or request changes by returning it to In progress. Without a reviewer, a task can be completed directly.
+7. Assignment, comment, review, and study-session notifications appear in the relevant registered members' inboxes. Updates flow through an authenticated Server-Sent Events connection, with periodic refresh as a fallback.
+8. Review milestone completion, overdue work, workload, focus time, and recent contribution history on Overview.
 
-## Proposed team responsibilities
+A prerequisite cannot be deleted while another task depends on it. Move dependent tasks to To do before reopening a completed prerequisite. Task and milestone edits carry version numbers, so stale edits are rejected rather than overwriting somebody else's work. Close and reopen a changed task before resubmitting an edit.
 
-Agree on these together; they are planned assignments rather than completed contribution claims.
+All members can create tasks, edit task details, comment, and create milestones. The server enforces task status and reviewer permissions. Resource authors or Sudip can delete their resources; session organizers or Sudip can cancel sessions. Shared-workspace activity is not a measure of code contributions; use GitHub for those.
 
-| Member | Proposed responsibility |
-|---|---|
-| Eric | Forms, task interface, accessibility |
-| Abinash | CSS, responsive layout, visual polish |
-| Sondor | Filters, task interactions, testing |
-| Sudip | Coordination, backend integration, deployment |
+## Calendar, sessions, and resources
 
-## Source guide
+Calendar shows task deadlines, milestone targets, and study sessions. Schedule a future session in your device's local time zone; the server stores its UTC time. Other members see it in their own time zone. RSVP Going, Maybe, or Can't attend. Copy invitation copies the title, time, agenda, and app link for your group chat. It does not send a message automatically.
 
-- `index.html`: sign-in and task board.
-- `styles.css`: design and responsive layout.
-- `app.js`: frontend API calls, state, rendering, and controls.
-- `server.mjs`: HTTP server, authentication, validation, and database.
-- `team.html`: team overview and proposed responsibilities.
-- `tests/`: automated backend checks; run **npm test**.
-- `data/`: runtime database; ignored and not included in the source ZIP.
-- `Dockerfile`: container setup for backend hosting.
+The resource shelf stores shared HTTP/HTTPS links. Each task also supports up to ten labeled work links. Files are not uploaded to the server.
 
-## Hosting
+## Study Break
 
-The ZIP runs locally; it is not a public deployment. GitHub Pages cannot run this backend. Deploy **one Node.js 24 process** with a **persistent disk**, using `npm start` or the Dockerfile.
+- Focus timer: choose 1–180 minutes, pause/resume/reset, switch to a break, and explicitly save a completed focus session. The timer uses a wall-clock deadline to catch up after a background tab is throttled. Closing/reloading the page ends the local timer. Focus totals are self-reported, not verified attendance.
+- Background audio: synthesized rain, cafe hum, or white noise with a volume slider. Nothing plays automatically. You can select your own local audio file; it is never uploaded. Mobile browsers may suspend audio or timers when the phone locks.
+- Memory garden: match six pairs. Best move count is saved per member in this browser.
+- Typing sprint: a 60-second passage, accuracy and correct-character WPM. Paste is disabled during the challenge. Finishing the passage early also ends the round.
+- Study quiz: six questions about the project's workflow and technology, with immediate explanations and a round score.
 
-Configure:
+Games run locally and have no competitive shared leaderboard. The timer, games, and selected music file are not synced to teammates. Completed focus totals are shared. All games still work if browser storage is unavailable; personal bests then last only for the page session.
 
-- `NODE_ENV=production`
-- `HOST=0.0.0.0`
-- `PORT` supplied by your host
-- `APP_ORIGIN` as your exact public HTTPS origin, without a trailing slash
-- `TEAM_INVITE_CODE` as a private random code of at least 16 characters
-- `DATABASE_PATH` as a SQLite file on a persistent disk
+## Accounts and invitations
 
-Production rejects the development invite code and requires HTTPS. When using Docker, mount persistent storage at `/app/data`. Do not run multiple replicas with separate database files. The `/health` route reports server health.
+The four member slots are fixed: Eric, Abinash, Sondor, and Sudip. An invitation lets an unregistered member claim their slot. Registered members sign in using their own password and do not need an invitation again.
 
-The Docker entrypoint prepares the mounted data directory, then starts the server as the unprivileged `node` user. For Railway, create one service from this repository, attach a 500 MB volume at `/app/data`, generate its public domain, and set `APP_ORIGIN` to that HTTPS origin before deployment. Use `/health` for the health check and keep a single replica.
+The initial live invitation is configured in Railway's TEAM_INVITE_CODE variable. Sudip can replace it in Account & data → Team invitation. A replacement takes effect immediately and is stored as a hash in the database; the old Railway variable is no longer the active invitation after a replacement. A replacement is displayed once to Sudip, who can copy it privately. Existing accounts and sessions remain active. Do not publish invitation or recovery codes in the repository.
 
-Only allowlisted UI files are public. Database, environment, test, and server-source files are not served. Mutations check the request origin and JSON format; authentication is rate-limited. Back up using a SQLite-aware backup while running, or stop the server before copying database files.
+In Account & data, a member can change their password with their current password. Other sign-in sessions are revoked. Generate a private recovery code after confirming the current password and store it safely. It is hashed server-side, shown once, and can be used once from Recover my account on the sign-in page. Generate a new one after recovery. There is no email password reset or admin impersonation.
 
-## Demo sequence
+Passwords use scrypt with a random salt. Sessions use random tokens, hashed server-side, and HttpOnly SameSite cookies (Secure in production). Mutation requests require the configured origin. Private server and database files are never served. Authenticated live streams carry change signals, not shared data or credentials, and expire when their session is revoked.
 
-1. Sign in and assign a task to another member.
-2. Sign in as that member in a separate browser session; refresh the board.
-3. Complete the task and show the team activity feed.
-4. Demonstrate filters, editing, delete/undo, and mobile layout.
-5. Explain the architecture and the next improvements each member will build.
+## Data, migrations, and backup
 
+Production uses `/app/data/nextstep.sqlite` on Railway's persistent volume. Never replace or remove that volume during a source deployment. Versioned migrations preserve the original accounts, sessions, task IDs, versions, and completion state. Older completed tasks become Done; others become To do with Medium priority.
+
+At startup, the server creates a consistent SQLite snapshot in the database's `backups` folder (at most one per date/schema version) before applying a migration. It retains the latest seven automatically named snapshots. These share the database volume: download a backup elsewhere for protection against loss of the whole volume. No scheduled offsite backup is configured.
+
+Create a manual consistent backup while the server is running:
+
+```sh
+npm run backup
+# Or select a NEW destination:
+node scripts/backup.mjs path/to/new-backup.sqlite
+```
+
+DATABASE_PATH selects the source database when set. Backups contain private account hashes and session data; keep them private. The script checks SQLite integrity and refuses to overwrite an existing file.
+
+To restore, stop the application, restore into a NEW database file, and point DATABASE_PATH to it before restarting:
+
+```sh
+node scripts/restore.mjs path/to/backup.sqlite path/to/restored.sqlite
+```
+
+The restore command validates the backup and never overwrites a running or existing database. Keep the old file until you have verified the restored app. For Railway, run these maintenance commands in the service/container with the mounted volume; do not run a restore against the active database.
+
+Account & data → Download workspace data exports shared records as JSON without passwords or sign-in tokens. This is a readable workspace export, not a full database backup or an import mechanism.
+
+## Team coding workflow
+
+Create an issue using the repository template: describe the user need, an owner and reviewer, and observable acceptance criteria. Each member creates a feature branch, implements a small change, runs the relevant checks, and opens a pull request. Another member reviews it. Use the PR template to record validation and a demo. Merge after checks pass, then verify the Railway deployment. The repository includes CI on pushes and pull requests; branch protection and mandatory review rules are not configured automatically.
+
+Suggested areas to learn and improve:
+
+- Eric: forms, task details, accessible status controls, and discussion UI.
+- Abinash: visual design, calendar, phone layouts, and Study Break appearance.
+- Sondor: timer/game interactions, filters, and testing task workflows.
+- Sudip: API, migrations, permissions, integration, and deployment.
+
+These are suggested responsibilities. Each member should understand and commit their own changes and explain them during the demonstration.
+
+## Tests and deployment
+
+```sh
+npm test
+```
+
+Tests cover the original shared-task behavior plus reviews, dependencies, notifications, ownership, account recovery, invite rotation, live events, and migration of the old schema. Disposable test databases are separate from production.
+
+Railway builds the included Dockerfile with Node.js 24. Required production environment variables: NODE_ENV=production, APP_ORIGIN set to the exact HTTPS origin, TEAM_INVITE_CODE with at least 16 private characters, and DATABASE_PATH on the attached persistent volume. HOST=0.0.0.0 and PORT=4175 are configured by the image. Health check: `/health`.
+
+Main files:
+
+- `index.html`: accessible workspace and dialogs.
+- `styles.css`: responsive layout and visual system.
+- `app.js`: authentication, workspace rendering, API, live sync, and forms.
+- `break.js`: focus timer, sound synthesis, local music, memory, typing, and quiz.
+- `server.mjs`: HTTP server, sessions, origin checks, and static allowlist.
+- `workflow.mjs`: migrations, task rules, shared features, accounts, and live event streams.
+- `tests/`: server integration tests; `scripts/`: backup and restore tools.
+
+The source ZIP excludes databases, accounts, session data, and private environment files.
